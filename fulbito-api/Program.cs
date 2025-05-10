@@ -2,6 +2,7 @@ using fulbito_api.Data;
 using fulbito_api.Repositories;
 using fulbito_api.Repositories.Interfaces;
 using fulbito_api.Services;
+using fulbito_api.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 

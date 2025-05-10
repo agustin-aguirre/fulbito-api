@@ -1,7 +1,7 @@
 ﻿using fulbito_api.Dtos.Users;
 
 
-namespace fulbito_api.Services
+namespace fulbito_api.Services.Interfaces
 {
 	public interface IUsersService<TId>
 	{

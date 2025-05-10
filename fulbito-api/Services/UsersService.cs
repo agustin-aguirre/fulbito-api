@@ -2,6 +2,7 @@
 using fulbito_api.Dtos.Users;
 using fulbito_api.Models;
 using fulbito_api.Repositories.Interfaces;
+using fulbito_api.Services.Interfaces;
 
 
 namespace fulbito_api.Services

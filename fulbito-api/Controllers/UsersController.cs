@@ -1,6 +1,6 @@
 ﻿using fulbito_api.Dtos.Users;
 using fulbito_api.Errors;
-using fulbito_api.Services;
+using fulbito_api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 
