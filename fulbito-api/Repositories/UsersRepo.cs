@@ -26,6 +26,10 @@ namespace fulbito_api.Repositories
 				.Take(pageSize)
 				.ToListAsync();
 
+
+		public async Task<bool> Exists(int id) => await dbContext.Users.AnyAsync(u => u.Id == id);
+		
+
 		public async Task<User> Add(User newUser)
 		{
 			newUser.CreationDate = DateTime.Now;
@@ -34,24 +38,29 @@ namespace fulbito_api.Repositories
 			return newUser;
 		}
 
+
 		public async Task Update(int id, User updatedUserData)
 		{
-			var targetUser = await Get(id);
-			if (targetUser == null)
-				throw new EntityNotFoundException($"User with id:{updatedUserData.Id} does not exist.");
-			targetUser.Name = updatedUserData.Name;
+			if (id != updatedUserData.Id) throw new ArgumentException("Passed id and User.Id don't match.");
+
+			if (!await Exists(id)) throw newNotFound(id);
+
+			dbContext.Users.Update(updatedUserData);
+
 			await persist();
 		}
 
 		public async Task Delete(int id)
 		{
 			var targetUser = await Get(id);
-			if (targetUser == null)
-				throw new EntityNotFoundException($"User with id:{id} does not exist.");
+			if (targetUser == null) throw newNotFound(id);
 			dbContext.Users.Remove(targetUser);
 			await persist();
 		}
 
+
+		EntityNotFoundException newNotFound(int id)
+			=> new EntityNotFoundException($"User with id:{id} does not exist.");
 
 		async Task persist()
 		{
