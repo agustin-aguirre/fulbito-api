@@ -1,7 +1,8 @@
 ﻿namespace fulbito_api.Dtos.Tournaments
 {
-	public class CreateTournamentDto
+	public class UpdateTournamentDto
 	{
+		public int Id { get; set; }
 		public string Name { get; set; } = string.Empty;
 		public int TotalMatches { get; set; }
 		public int PointsPerWonMatch { get; set; }

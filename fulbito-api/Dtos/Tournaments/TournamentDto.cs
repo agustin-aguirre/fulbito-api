@@ -2,6 +2,7 @@
 {
 	public class TournamentDto
 	{
+		public int Id { get; set; }
 		public string Name { get; set; } = string.Empty;
 		public int TotalMatches { get; set; } = 1;
 		public int PointsPerWonMatch { get; set; } = 3;

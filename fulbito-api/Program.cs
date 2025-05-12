@@ -13,9 +13,11 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(buil
 
 // Add Application Services to the container.
 builder.Services.AddScoped<IUsersService<int>, UsersService>();
+builder.Services.AddScoped<ITournamentsService, TournamentsService>();
 
 //Add Repositories here
 builder.Services.AddScoped<IUsersRepo<int>, UsersRepo>();
+builder.Services.AddScoped<ITournamentsRepo<int>, TournamentsRepo>();
 
 // Add other services
 builder.Services.AddAutoMapper(typeof(AppMapper));
