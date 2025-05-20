@@ -3,7 +3,7 @@
 
 namespace fulbito_api.Controllers
 {
-	[Route("api/tournaments/[controller]")]
+	[Route("api/tournaments/stats")]
 	[ApiController]
 	public class StatsController : ControllerBase
 	{

@@ -1,9 +1,8 @@
 ﻿using AutoMapper;
 using fulbito_api.Dtos.Tournaments;
-using fulbito_api.Errors;
 using fulbito_api.Models;
 using fulbito_api.Repositories.Interfaces;
-using fulbito_api.Services.Helpers;
+using fulbito_api.Sanitizers.Interfaces;
 using fulbito_api.Services.Interfaces;
 
 
@@ -11,140 +10,101 @@ namespace fulbito_api.Services
 {
 	public class TournamentsService : ITournamentsService
 	{
-		readonly ITournamentsRepo<int> repo;
+		readonly ITournamentsRepo repo;
 		readonly IMapper mapper;
+		readonly ISanitizer sanitizer;
+
+		const int NameMaxLength = 48;
+		const int MinPageSize = 5;
+		const int MaxPageSize = 50;
+		const int DefaultPageNumber = 1;
+
+		const string KeyNotFoundMsgTemplate = "Tournament with id:{0} does not exist.";
+		const string NameTooShortMsg = "Tournament name cannot be null or empty.";
+		const string NameTooLongMsgTemplate = "Tournament name is too long. Max length is {0}";
+		const string IdsDontMatchMsg = "Passed id and tournament id don't match.";
 
 
-		public TournamentsService(ITournamentsRepo<int> repo, IMapper mapper)
+		public TournamentsService(ITournamentsRepo repo, IMapper mapper, ISanitizer sanitizer)
 		{
 			this.repo = repo;
 			this.mapper = mapper;
+			this.sanitizer = sanitizer;
 		}
 
 
-		public async Task<TournamentDto?> Get(int id)
+		public async Task<TournamentDto> Create(CreateTournamentDto createDto)
 		{
-			var targetTournament = await repo.Get(id);
+			createDto.Name = sanitizer.Sanitize(createDto.Name);
 
-			if (targetTournament == null) return null;
+			checkName(createDto.Name);
 
-			return mapper.Map<TournamentDto>(targetTournament);
-		}
-
-
-		public async Task<IEnumerable<TournamentDto>> GetPage(int pageNumber, int pageSize)
-			=> mapper.Map<IEnumerable<TournamentDto>>(await repo.GetMany(pageNumber, pageSize));
-
-
-		public async Task<TournamentDto> Create(CreateTournamentDto createTournamentDto)
-		{
-			checkTotalMatches(createTournamentDto.TotalMatches);
-			checkDates(createTournamentDto.StartDate, createTournamentDto.EndDate);
-
-			var newTournament = mapper.Map<Tournament>(createTournamentDto);
-			checkPointsAssignment(newTournament, new TournamentPointsHelper(createTournamentDto));
-
-			await repo.Create(newTournament);
+			var newTournament = mapper.Map<Tournament>(createDto);
+			newTournament = await repo.Create(newTournament);
 
 			return mapper.Map<TournamentDto>(newTournament);
 		}
 
-
-		public async Task Update(int id, UpdateTournamentDto updateTournamentDto)
+		public async Task Delete(int id)
 		{
-			if (updateTournamentDto.TotalMatches != null)
-				checkTotalMatches((int)updateTournamentDto.TotalMatches);
+			if (id <= 0 || !await repo.Exists(id)) throw KeyNotFound(id);
+			await repo.Delete(id);
+		}
+
+		public async Task<TournamentDto?> GetById(int id)
+		{
+			if (id <= 0) throw KeyNotFound(id);
+
+			var tournament = await repo.Get(id);
+			if (tournament is null) throw KeyNotFound(id);
+
+			return mapper.Map<TournamentDto>(tournament);
+		}
+
+		public async Task<IEnumerable<TournamentDto>> GetManyById(IEnumerable<int> ids)
+			=> mapper.Map<IEnumerable<TournamentDto>>(await repo.GetMany(ids));
+
+		public async Task<IEnumerable<TournamentDto>> GetPage(int pageNumber, int pageSize)
+		{
+			pageNumber = Math.Max(pageNumber, DefaultPageNumber);	// forces requests to send pageNumber >= 1
+			pageSize = Math.Clamp(pageSize, MinPageSize, MaxPageSize);
+
+			var tournaments = await repo.GetPage(pageNumber: pageNumber - 1, pageSize: pageSize);	// page number in repo can be 0
+			return mapper.Map<IEnumerable<TournamentDto>>(tournaments).ToList();
+		}
+
+		public async Task Update(int id, UpdateTournamentDto updateDto)
+		{
+			if (id != updateDto.Id) throw IdsDontMatch();
+
+			updateDto.Name = sanitizer.Sanitize(updateDto.Name);
+
+			checkName(updateDto.Name);
+
+			if (!await repo.Exists(id)) throw KeyNotFound(id);
 			
-			checkDates(updateTournamentDto.StartDate, updateTournamentDto.EndDate);
+			var updatedTournament = mapper.Map<Tournament>(updateDto);
 
-			if (updateTournamentDto.TotalMatches != null)
-				checkTotalMatches((int)updateTournamentDto.TotalMatches);
-
-			var mappedTournament = mapper.Map<Tournament>(updateTournamentDto);
-			checkPointsAssignment(mappedTournament, new TournamentPointsHelper(updateTournamentDto));
-
-			await repo.Update(id, mappedTournament);
+			await repo.Update(updatedTournament);
 		}
 
 
-		public async Task Delete(int id) => await repo.Delete(id);
-
-
-
-		void checkDates(DateTime? startDate, DateTime? endDate)
+		private void checkName(string name)
 		{
-			bool hasStartDate = startDate != null;
-			bool hasEndDate = endDate != null;
-			if (!hasStartDate && hasEndDate)
-				throw new ArgumentOutOfRangeException("Can't set an End Date before setting a Start Date.");
-			if (hasStartDate && hasEndDate && startDate > endDate)
-				throw new ArgumentOutOfRangeException("Start Date is set after End Date.");
+			if (string.IsNullOrEmpty(name)) throw NameTooShort();
+			if (name.Length > NameMaxLength) throw NameTooLong();
 		}
 
-		void assignOrFail(Func<int?> valueRedux, Action valueSetter, Action failureChecks)
-		{
-			if (valueRedux() == null)
-			{
-				valueSetter();
-			}
-			else
-			{
-				failureChecks();
-			}
-		}
+		private KeyNotFoundException KeyNotFound(int id)
+			=> new KeyNotFoundException(string.Format(KeyNotFoundMsgTemplate, id));
 
-		void checkTotalMatches(int totalMatches)
-		{
-			if (totalMatches < 1) throw new ArgumentOutOfRangeException("Can't set total matches to less than 1.");
-		}
+		private ArgumentNullException NameTooShort()
+			=> new ArgumentNullException(NameTooShortMsg);
 
-		void checkPointsAssignment(Tournament tournament, TournamentPointsHelper pointsHelper)
-		{
-			// win points
-			assignOrFail(
-				() => pointsHelper.PointsPerWonMatch,
-				() => tournament.PointsPerWonMatch = 0,
-				() =>
-				{
-					if (tournament.PointsPerWonMatch < 0)
-						throw new ArgumentOutOfRangeException("Cannot set negative points per won match");
-				}
-			);
+		private ArgumentOutOfRangeException NameTooLong()
+			=> new ArgumentOutOfRangeException(string.Format(NameTooLongMsgTemplate, NameMaxLength));
 
-			// tie points
-			assignOrFail(
-				() => pointsHelper.PointsPerTiedMatch,
-				() => tournament.PointsPerTiedMatch = 0,
-				() =>
-				{
-					if (tournament.PointsPerTiedMatch < 0)
-						throw new ArgumentOutOfRangeException("Cannot set negative points per tied match.");
-					if (tournament.PointsPerWonMatch < tournament.PointsPerTiedMatch)
-						throw new ArgumentOutOfRangeException("Cannot set less points per tie than points per won matches.");
-				}
-			);
-
-			// loss points
-			assignOrFail(
-				() => pointsHelper.PointsPerLostMatch,
-				() => tournament.PointsPerLostMatch = 0,
-				() =>
-				{
-					if (tournament.PointsPerLostMatch >= tournament.PointsPerTiedMatch)
-						throw new ArgumentOutOfRangeException("Cannot set more or equal points per loss than tied matches.");
-				}
-			);
-
-			// assert points
-			assignOrFail(
-				() => pointsHelper.PointsPerAssertedMatch,
-				() => tournament.PointsPerAssertedMatch = 0,
-				() =>
-				{
-					if (tournament.PointsPerAssertedMatch < 0)
-						throw new ArgumentOutOfRangeException("Cannot set negative points per asserted match.");
-				}
-			);
-		}
+		private ArgumentException IdsDontMatch()
+			=> new ArgumentException(IdsDontMatchMsg);
 	}
 }

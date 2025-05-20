@@ -1,9 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using fulbito_api.Models.Interfaces;
+using System.ComponentModel.DataAnnotations;
 
 
 namespace fulbito_api.Models
 {
-	public class User
+	public class User : IAuditable
 	{
 		[Key]
 		public int Id { get; set; }
@@ -14,5 +15,7 @@ namespace fulbito_api.Models
 
 		[Required]
 		public DateTime CreationDate { get; set; }
+		[Required]
+		public DateTime LastModification { get; set; }
 	}
 }

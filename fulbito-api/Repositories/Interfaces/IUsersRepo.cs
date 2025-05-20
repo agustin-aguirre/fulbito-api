@@ -1,14 +1,9 @@
 ﻿using fulbito_api.Models;
 
+
 namespace fulbito_api.Repositories.Interfaces
 {
-	public interface IUsersRepo<IdType>
+	public interface IUsersRepo : IIdentifiableEntityCRUDRepo<int, User>
 	{
-		Task<User> Add(User newUser);
-		Task<User?> Get(IdType id);
-		Task<IEnumerable<User>> Get(int pageNumber, int pageSize);
-		Task Delete(IdType id);
-		Task<bool> Exists(IdType id);
-		Task Update(IdType id, User updatedUserData);
 	}
 }

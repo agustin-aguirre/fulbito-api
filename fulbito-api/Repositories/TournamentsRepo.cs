@@ -1,5 +1,4 @@
 ﻿using fulbito_api.Data;
-using fulbito_api.Errors;
 using fulbito_api.Models;
 using fulbito_api.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -7,72 +6,56 @@ using Microsoft.EntityFrameworkCore;
 
 namespace fulbito_api.Repositories
 {
-	public class TournamentsRepo : ITournamentsRepo<int>
+	public class TournamentsRepo : ITournamentsRepo
 	{
 		readonly AppDbContext dbContext;
 
 		public TournamentsRepo(AppDbContext dbContext) => this.dbContext = dbContext;
 
 
-		public async Task<Tournament?> Get(int id)
-			=> await dbContext.Tournaments.FirstOrDefaultAsync(t => t.Id == id);
-
-
-		public async Task<IEnumerable<Tournament>> GetMany(int pageNumber, int pageSize)
-			=> await dbContext.Tournaments
-				.Skip((pageNumber - 1) * pageSize)
-				.Take(pageSize)
-				.ToListAsync();
-
-
-		public async Task<bool> Exists(int id)
-			=> await dbContext.Tournaments.AnyAsync(t => t.Id == id);
-
-
-		public async Task<Tournament> Create(Tournament newTournamentData)
+		public async Task<Tournament> Create(Tournament newTournament)
 		{
-			newTournamentData.CreationDate = DateTime.Now;
-			newTournamentData.LastModification = DateTime.Now;
+			await dbContext.Tournaments.AddAsync(newTournament);
+			await persistChanges();
+			return newTournament;
+		}
 
-			await dbContext.Tournaments.AddAsync(newTournamentData);
-			await persist();
+		public async Task<bool> Delete(int tournamentId)
+		{
+			int affectedRows = await dbContext.Tournaments
+					.Where(t => t.Id == tournamentId)
+					.ExecuteDeleteAsync();
+			return affectedRows > 0;
+		}
 
-			return newTournamentData;
+		public async Task<bool> Exists(int tournamentId) 
+			// return: tournament is in cache || tournament is in db
+			=> (await getFromCache(tournamentId)) is not null || await dbContext.Tournaments.AnyAsync(t => t.Id == tournamentId);
+
+		public async Task<Tournament?> Get(int tournamentId)
+			// Primero busca a la entidad en la caché de EF.
+			// Si la entidad está siendo trackeada, retorna eso.
+			// Sino, realiza la consulta a la base de datos.
+			=> await getFromCache(tournamentId) ?? await getFromDB(tournamentId);
+
+		public async Task<IEnumerable<Tournament>> GetMany(IEnumerable<int> tournamentIds) 
+			=> await dbContext.Tournaments.Where(t => tournamentIds.Contains(t.Id)).ToListAsync();
+
+		public async Task<IEnumerable<Tournament>> GetPage(int pageNumber, int pageSize)
+			=> await dbContext.Tournaments.Skip(pageNumber * pageSize).Take(pageSize).ToListAsync();
+
+		public async Task Update(Tournament updatedTournament)
+		{
+			// fuerza cachear la entidad con Get (la encuentra en caché o la carga de BBDD)
+			var cachedTournament = await Get(updatedTournament.Id);
+			if (cachedTournament is not null)
+				dbContext.Entry(cachedTournament).CurrentValues.SetValues(updatedTournament);
+			await persistChanges();
 		}
 
 
-		public async Task Update(int id, Tournament updatedTournamentData)
-		{
-			if (id != updatedTournamentData.Id)
-				throw new ArgumentException("Passed Id and UpdatedTournamentData.Id don't match.");
-
-			if (! await Exists(id)) throw newNotFound(id);
-
-			updatedTournamentData.LastModification = DateTime.Now;
-			
-			dbContext.Tournaments.Update(updatedTournamentData);
-			await persist();
-		}
-
-
-		public async Task Delete(int id)
-		{
-			var targetTournament = await Get(id);
-
-			if (targetTournament == null) throw newNotFound(id);
-			
-			dbContext.Tournaments.Remove(targetTournament);
-			await persist();
-		}
-
-
-		EntityNotFoundException newNotFound(int id)
-			=> new EntityNotFoundException($"Tournament with id:{id} does not exist.");
-
-
-		async Task persist()
-		{
-			await dbContext.SaveChangesAsync();
-		}
+		async Task<Tournament?> getFromCache(int id) => await dbContext.Tournaments.FindAsync(id);
+		async Task<Tournament?> getFromDB(int id) => await dbContext.Tournaments.FirstOrDefaultAsync(t => t.Id == id);
+		async Task persistChanges() => await dbContext.SaveChangesAsync();
 	}
 }

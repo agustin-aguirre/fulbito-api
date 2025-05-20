@@ -1,5 +1,4 @@
 ﻿using fulbito_api.Dtos.Tournaments;
-using fulbito_api.Errors;
 using fulbito_api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,12 +7,11 @@ namespace fulbito_api.Controllers
 {
 	[Route("fulbito-api/tournaments")]
 	[ApiController]
-	public class TournamentsController : ControllerBase
+	public class TournamentsCRUDController : ControllerBase
 	{
 		readonly ITournamentsService service;
-		readonly int pageSize = 10;
-
-		public TournamentsController(ITournamentsService service) => this.service = service;
+		
+		public TournamentsCRUDController(ITournamentsService service) => this.service = service;
 
 
 		[HttpGet("{tournamentId:int}", Name = "GetTournament")]
@@ -21,19 +19,24 @@ namespace fulbito_api.Controllers
 		[ProducesResponseType(404)]
 		public async Task<ActionResult<TournamentDto>> GetTournament([FromRoute] int tournamentId)
 		{
-			var tournamentDto = await service.Get(tournamentId);
-			if (tournamentDto == null) return NotFound();
-			return Ok(tournamentDto);
+			try
+			{
+				return Ok(await service.GetById(tournamentId));
+			}
+			catch (KeyNotFoundException ex)
+			{
+				return NotFound(ex.Message);
+			}
 		}
 
 
-		[HttpGet]
+		[HttpGet(Name = "GetPage")]
 		[ProducesResponseType(200)]
-		public async Task<ActionResult<IEnumerable<TournamentDto>>> GetPage(int page)
-			=> Ok(await service.GetPage(pageNumber: page, pageSize: pageSize));
+		public async Task<ActionResult<IEnumerable<TournamentDto>>> GetPage([FromQuery] int? pageNumber, [FromQuery] int? pageSize)
+			=> Ok(await service.GetPage(pageNumber.GetValueOrDefault(), pageSize.GetValueOrDefault()));
 
 
-		[HttpPost]
+		[HttpPost(Name = "CreateTournament")]
 		[ProducesResponseType(201)]
 		[ProducesResponseType(400)]
 		public async Task<ActionResult> Create([FromBody] CreateTournamentDto createTournamentDto)
@@ -50,31 +53,29 @@ namespace fulbito_api.Controllers
 		}
 
 
-		[HttpPut("{tournamentId:int}")]
+		[HttpPut("{tournamentId:int}", Name = "PutTournament")]
 		[ProducesResponseType(204)]
 		[ProducesResponseType(400)]
 		[ProducesResponseType(404)]
-		public async Task<ActionResult> Update([FromRoute] int tournamentId, UpdateTournamentDto updateTournamentDto)
+		public async Task<ActionResult> Put([FromRoute] int tournamentId, UpdateTournamentDto updateTournamentDto)
 		{
-			if (tournamentId != updateTournamentDto.Id) return BadRequest("Route Id and Json id don't match.");
-
 			try
 			{
 				await service.Update(tournamentId, updateTournamentDto);
 				return NoContent();
 			}
-			catch(EntityNotFoundException ex)
+			catch (KeyNotFoundException ex)
 			{
 				return NotFound(ex.Message);
 			}
-			catch(ArgumentOutOfRangeException ex)
+			catch (ArgumentException ex)
 			{
 				return BadRequest(ex.Message);
 			}
 		}
 
 
-		[HttpDelete("{tournamentId:int}")]
+		[HttpDelete("{tournamentId:int}", Name = "DeleteTournament")]
 		[ProducesResponseType(204)]
 		[ProducesResponseType(404)]
 		public async Task<ActionResult> Delete([FromRoute] int tournamentId)
@@ -84,7 +85,7 @@ namespace fulbito_api.Controllers
 				await service.Delete(tournamentId);
 				return NoContent();
 			}
-			catch (EntityNotFoundException ex)
+			catch (KeyNotFoundException ex)
 			{
 				return NotFound(ex.Message);
 			}

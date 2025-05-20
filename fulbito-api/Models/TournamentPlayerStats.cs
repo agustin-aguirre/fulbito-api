@@ -26,7 +26,7 @@ namespace fulbito_api.Models
 		public int AssertedMatchesCount { get; set; } = 0;
 
 		[Required]
-		public DateTime CreationDate { get; set; }
+		public DateTime CreationDate { get; set; } = DateTime.Now;
 		[Required]
 		public DateTime LastModification { get; set; }
 	}

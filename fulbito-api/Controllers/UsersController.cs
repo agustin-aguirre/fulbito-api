@@ -1,5 +1,4 @@
 ﻿using fulbito_api.Dtos.Users;
-using fulbito_api.Errors;
 using fulbito_api.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +9,9 @@ namespace fulbito_api.Controllers
 	[ApiController]
 	public class UsersController : ControllerBase
 	{
-		readonly IUsersService<int> usersService;
-		readonly int pageSize = 10;
+		readonly IUsersService usersService;
 
-		public UsersController(IUsersService<int> usersService) => this.usersService = usersService;
+		public UsersController(IUsersService usersService) => this.usersService = usersService;
 
 
 		[HttpGet("{userId:int}", Name = "GetUser")]
@@ -21,31 +19,42 @@ namespace fulbito_api.Controllers
 		[ProducesResponseType(404)]
 		public async Task<ActionResult<UserDto?>> GetUser([FromRoute] int userId)
 		{
-			var targetUser = await usersService.Get(userId);
-			if (targetUser == null)
-				return NotFound();
-			return Ok(targetUser);
-		}
-
-
-		[HttpGet(Name = "GetPage")]
-		[ProducesResponseType(200)]
-		public async Task<ActionResult<IEnumerable<UserDto>>> GetPage(int page)
-		{
-			return Ok(await usersService.GetMany(pageNumber: page, pageSize: pageSize));
+			try
+			{
+				return Ok(await usersService.GetById(userId));
+			}
+			catch(KeyNotFoundException knfe)
+			{
+				return NotFound(knfe.Message);
+			}
 		}
 
 
 		[HttpPost]
+		[ProducesResponseType(200)]
+		[ProducesResponseType(400)]
+		[ProducesResponseType(404)]
 		public async Task<ActionResult> Post([FromBody] CreateUserDto createUserDto)
 		{
-			var newUserDto = await usersService.Create(createUserDto);
-			return CreatedAtRoute("GetUser", new { UserId = newUserDto.Id }, newUserDto);
+			try
+			{
+				var newUserDto = await usersService.Create(createUserDto);
+				return CreatedAtRoute("GetUser", new { UserId = newUserDto.Id }, newUserDto);
+			}
+			catch(ArgumentException ae)
+			{
+				return BadRequest(ae.Message);
+			}
+			catch(KeyNotFoundException knfe)
+			{
+				return NotFound(knfe.Message);
+			}
 		}
 
 
 		[HttpPut("{userId}")]
 		[ProducesResponseType(204)]
+		[ProducesResponseType(400)]
 		[ProducesResponseType(404)]
 		public async Task<ActionResult> Put(int userId, [FromBody] UpdateUserDto updatedUserDto)
 		{
@@ -54,9 +63,13 @@ namespace fulbito_api.Controllers
 				await usersService.Update(userId, updatedUserDto);
 				return NoContent();
 			}
-			catch (EntityNotFoundException)
+			catch (ArgumentException ae)
 			{
-				return NotFound();
+				return BadRequest(ae.Message);
+			}
+			catch (KeyNotFoundException knfe)
+			{
+				return NotFound(knfe.Message);
 			}
 		}
 
@@ -71,9 +84,9 @@ namespace fulbito_api.Controllers
 				await usersService.Delete(userId);
 				return NoContent();
 			}
-			catch (EntityNotFoundException)
+			catch (KeyNotFoundException knfe)
 			{
-				return NotFound();
+				return NotFound(knfe.Message);
 			}
 		}
 	}

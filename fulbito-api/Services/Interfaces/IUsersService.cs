@@ -3,12 +3,12 @@
 
 namespace fulbito_api.Services.Interfaces
 {
-	public interface IUsersService<TId>
+	public interface IUsersService
 	{
 		Task<UserDto> Create(CreateUserDto createUserDto);
-		Task Delete(TId id);
-		Task<UserDto?> Get(TId id);
-		Task<IEnumerable<UserDto>> GetMany(int pageNumber, int pageSize);
-		Task Update(TId id, UpdateUserDto updateUserDto);
+		Task Delete(int userId);
+		Task<UserDto?> GetById(int id);
+		Task<IEnumerable<UserDto>> GetManyById(IEnumerable<int> ids);
+		Task Update(int userId, UpdateUserDto updateUserDto);
 	}
 }
