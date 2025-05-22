@@ -13,6 +13,9 @@ namespace fulbito_api.Repositories
 
 		public UsersRepo(AppDbContext dbContext) => this.dbContext = dbContext;
 
+		
+		public async Task<IEnumerable<int>> BulkExists(IEnumerable<int> userIds)
+			=> await dbContext.Users.Where(u => userIds.Contains(u.Id)).Select(u => u.Id).ToListAsync();
 
 		public async Task<User> Create(User newUser)
 		{

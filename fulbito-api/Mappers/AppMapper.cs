@@ -15,6 +15,8 @@ public class AppMapper : Profile
 		CreateMap<Tournament, TournamentDto>().ReverseMap();
 		CreateMap<Tournament, CreateTournamentDto>().ReverseMap();
 		CreateMap<Tournament, UpdateTournamentDto>().ReverseMap();
-		CreateMap<CreateTournamentDto, UpdateTournamentDto>().ReverseMap();
+
+		CreateMap<PlayerStatsFromTournament, PlayerStatsFromTournamentDto>().ReverseMap();
+		CreateMap<PlayerStatsFromTournament, UpdatePlayerStatsFromTournamentDto>().ReverseMap();
 	}
 }

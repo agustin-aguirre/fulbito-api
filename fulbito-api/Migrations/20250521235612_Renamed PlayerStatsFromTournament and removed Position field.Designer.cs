@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using fulbito_api.Data;
 
@@ -11,9 +12,11 @@ using fulbito_api.Data;
 namespace fulbito_api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250521235612_Renamed PlayerStatsFromTournament and removed Position field")]
+    partial class RenamedPlayerStatsFromTournamentandremovedPositionfield
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,9 +55,6 @@ namespace fulbito_api.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("TiedMatchesCount")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TotalPoints")
                         .HasColumnType("int");
 
                     b.Property<int>("TournamentId")

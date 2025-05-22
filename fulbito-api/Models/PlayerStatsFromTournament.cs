@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace fulbito_api.Models
 {
-	public class TournamentPlayerStats
+	public class PlayerStatsFromTournament
 	{
 		[Key]
 		public int Id { get; set; }
@@ -15,8 +15,7 @@ namespace fulbito_api.Models
 		[ForeignKey("User")]
 		public int UserId { get; set; }
 
-		public int Position { get; set; } = 0;
-
+		public int TotalPoints { get; set; } = 0;
 		public int GoalCount { get; set; } = 0;
 		public int AssitenciesCount { get; set; } = 0;
 		public int PlayedMatchesCount { get; set; } = 0;

@@ -9,7 +9,7 @@ namespace fulbito_api.Data
 	{
 		public DbSet<User> Users { get; set; }
 		public DbSet<Tournament> Tournaments { get; set; }
-		public DbSet<TournamentPlayerStats> TournamentsPlayerStats { get; set; }
+		public DbSet<PlayerStatsFromTournament> TournamentsPlayerStats { get; set; }
 
 		
 		public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }

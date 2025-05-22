@@ -5,5 +5,6 @@ namespace fulbito_api.Repositories.Interfaces
 {
 	public interface IUsersRepo : IIdentifiableEntityCRUDRepo<int, User>
 	{
+		Task<IEnumerable<int>> BulkExists(IEnumerable<int> userIds);
 	}
 }

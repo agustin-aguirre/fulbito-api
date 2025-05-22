@@ -3,71 +3,69 @@ using fulbito_api.Models;
 using fulbito_api.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace fulbito_api.Repositories
 {
-	public class TournamentPlayerStatsRepo : IIdentifiableEntityCRUDRepo<int, TournamentPlayerStats>
+	public class TournamentPlayerStatsRepo : ITournamentPlayerStatsRepo
 	{
 		readonly AppDbContext dbContext;
 
-
-		public TournamentPlayerStatsRepo(AppDbContext dbContext) 
-			=> this.dbContext = dbContext;
+		public TournamentPlayerStatsRepo(AppDbContext dbContext) => this.dbContext = dbContext;
 
 
-		public async Task<TournamentPlayerStats> Create(TournamentPlayerStats newPlayerStatsEntry)
+		public async Task<IEnumerable<PlayerStatsFromTournament>> BulkAdd(IEnumerable<PlayerStatsFromTournament> playerStatsFromTournaments)
 		{
-			//if (newPlayerStatsEntry.Id != 0)
-				//throw new ArgumentException("Cannot create a player entry in tournament with Id other than 0");
-
-			//if (!await tournamentsRepo.Exists(newPlayerStatsEntry.TournamentId)) 
-				//throw new KeyNotFoundException($"Tournament with id:{newPlayerStatsEntry.TournamentId} does not exists.");
-
-			//if (!await usersRepo.Exists(newPlayerStatsEntry.UserId)) 
-				//throw new KeyNotFoundException($"User with id:{newPlayerStatsEntry.UserId} does not exists.");
-
-			//if (await PlayerIsRegisteredAtTournament(newPlayerStatsEntry.UserId, newPlayerStatsEntry.TournamentId))
-				//throw new Exception("Player is already registered at tournament.");
-
-			//newPlayerStatsEntry.CreationDate = DateTime.Now;
-
-			await dbContext.TournamentsPlayerStats.AddAsync(newPlayerStatsEntry);
+			await dbContext.TournamentsPlayerStats.AddRangeAsync(playerStatsFromTournaments);
 			await persistChanges();
-			return newPlayerStatsEntry;
+			return playerStatsFromTournaments;
 		}
 
-		public async Task<bool> Delete(int playerStatsEntryId)
+		public async Task<PlayerStatsFromTournament> Create(PlayerStatsFromTournament newPlayerEntry)
 		{
-			//var existingEntry = await Get(playerStatsEntryId) ?? throw new KeyNotFoundException($"Player stats entry with id:{playerStatsEntryId} does not exist.");
-			//dbContext.TournamentsPlayerStats.Remove(existingEntry);
-			//await persistChanges();
+			await dbContext.TournamentsPlayerStats.AddAsync(newPlayerEntry);
+			await persistChanges();
+			return newPlayerEntry;
+		}
+
+		public async Task<bool> Delete(int playerEntryId)
+		{
 			int affectedRows = await dbContext.TournamentsPlayerStats
-					.Where(tps => tps.Id == playerStatsEntryId)
-					.ExecuteDeleteAsync();
+				.Where(e => e.Id == playerEntryId)
+				.ExecuteDeleteAsync();
 			return affectedRows > 0;
 		}
 
-		public async Task<bool> Exists(int playerStatsEntryId) 
+		public async Task<bool> Exists(int playerEntryId)
 			// return user is in cache || user is in db
-			=> (await getFromCache(playerStatsEntryId)) is not null || await dbContext.Tournaments.AnyAsync(tps => tps.Id == playerStatsEntryId);
+			=> (await getFromCache(playerEntryId)) is not null || await dbContext.TournamentsPlayerStats.AnyAsync(e => e.Id == playerEntryId);
 
-		public async Task<TournamentPlayerStats?> Get(int playerStatsEntryId) 
-			=> await getFromCache(playerStatsEntryId) ?? await getFromDB(playerStatsEntryId);
+		public async Task<PlayerStatsFromTournament?> Get(int playerEntryId)
+			// Primero busca a la entidad en la caché de EF.
+			// Si la entidad está siendo trackeada, retorna eso.
+			// Sino, realiza la consulta a la base de datos.
+			=> await getFromCache(playerEntryId) ?? await getFromDB(playerEntryId);
 
-		public async Task<IEnumerable<TournamentPlayerStats>> GetMany(IEnumerable<int> entityIds) 
-			=> await dbContext.TournamentsPlayerStats.Where(tps => entityIds.Contains(tps.Id)).ToListAsync();
+		public async Task<IEnumerable<PlayerStatsFromTournament>> GetMany(IEnumerable<int> playerEntryIds)
+			=> await dbContext.TournamentsPlayerStats.Where(e => playerEntryIds.Contains(e.Id)).ToListAsync();
 
-		public async Task<bool> PlayerIsRegisteredAtTournament(int userId, int tournamentId)
-			=> await dbContext.TournamentsPlayerStats.AnyAsync(tps => tps.TournamentId == tournamentId && tps.UserId == userId);
+		public async Task<IEnumerable<PlayerStatsFromTournament>> GetTournamentPositions(int tournamentId)
+			=> await dbContext.TournamentsPlayerStats
+				.Where(e => e.TournamentId == tournamentId)
+				.OrderBy(e => e.TotalPoints)
+				.ToListAsync();
 
-		public async Task Update(TournamentPlayerStats updatedPlayerStatsEntry)
+		public async Task Update(PlayerStatsFromTournament updatedPlayerEntry)
 		{
-			dbContext.TournamentsPlayerStats.Update(updatedPlayerStatsEntry);
+			// fuerza cachear la entidad con Get (la encuentra en caché o la carga de BBDD)
+			var cachedEntry = await Get(updatedPlayerEntry.Id);
+			if (cachedEntry is not null)
+				dbContext.Entry(cachedEntry).CurrentValues.SetValues(updatedPlayerEntry);
 			await persistChanges();
 		}
 
 
-		async Task<TournamentPlayerStats?> getFromCache(int id) => await dbContext.TournamentsPlayerStats.FindAsync(id);
-		async Task<TournamentPlayerStats?> getFromDB(int id) => await dbContext.TournamentsPlayerStats.FirstOrDefaultAsync(t => t.Id == id);
+		async Task<PlayerStatsFromTournament?> getFromCache(int id) => await dbContext.TournamentsPlayerStats.FindAsync(id);
+		async Task<PlayerStatsFromTournament?> getFromDB(int id) => await dbContext.TournamentsPlayerStats.FirstOrDefaultAsync(u => u.Id == id);
 		async Task persistChanges() => await dbContext.SaveChangesAsync();
 	}
 }

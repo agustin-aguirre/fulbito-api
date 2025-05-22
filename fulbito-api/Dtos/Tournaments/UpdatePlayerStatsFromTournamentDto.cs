@@ -1,14 +1,10 @@
-﻿using fulbito_api.Models.Interfaces;
-using System.ComponentModel.DataAnnotations;
-
-
-namespace fulbito_api.Dtos.Tournaments
+﻿namespace fulbito_api.Dtos.Tournaments
 {
-	public class TournamentPlayerStatsDto : IAuditable
+	public class UpdatePlayerStatsFromTournamentDto
 	{
+		public int Id { get; set; }
 		public int TournamentId { get; set; }
 		public int UserId { get; set; }
-		public int Position { get; set; }
 		public int GoalCount { get; set; } = 0;
 		public int AssitenciesCount { get; set; } = 0;
 		public int PlayedMatchesCount { get; set; } = 0;
@@ -16,9 +12,5 @@ namespace fulbito_api.Dtos.Tournaments
 		public int TiedMatchesCount { get; set; } = 0;
 		public int LostMatchesCount { get; set; } = 0;
 		public int AssertedMatchesCount { get; set; } = 0;
-		[Required]
-		public DateTime CreationDate { get; set; }
-		[Required]
-		public DateTime LastModification { get; set; }
 	}
 }
